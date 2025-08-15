@@ -43,7 +43,9 @@ function PlanGenerationContent() {
           clearInterval(textInterval)
 
           if (!response.ok) {
-            throw new Error('生成方案失败')
+            const errorData = await response.text()
+            console.error('API调用失败:', response.status, errorData)
+            throw new Error(`生成方案失败 (${response.status}): ${errorData || '未知错误'}`)
           }
 
           const data = await response.json()
@@ -111,14 +113,42 @@ function PlanGenerationContent() {
   }
 
   if (error) {
+    // 检查是否是配置相关的错误
+    const isConfigError = error.includes('CONFIGURATION_REQUIRED') || error.includes('API密钥未配置')
+    
     return (
       <div className="min-h-screen py-8 px-4 flex items-center justify-center">
-        <div className="text-center">
+        <div className="text-center max-w-md">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">出错了</h1>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <Button onClick={() => router.push('/tags')} className="bg-orange-500 hover:bg-orange-600">
-            重新选择标签
-          </Button>
+          <p className="text-gray-600 mb-4">{error}</p>
+          
+          {isConfigError && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 text-left">
+              <h3 className="font-medium text-yellow-800 mb-2">需要配置环境变量</h3>
+              <p className="text-sm text-yellow-700 mb-3">
+                请按照以下步骤配置API密钥：
+              </p>
+              <ol className="text-sm text-yellow-700 space-y-1 list-decimal list-inside">
+                <li>在项目根目录创建 <code className="bg-yellow-100 px-1 rounded">.env.local</code> 文件</li>
+                <li>添加 <code className="bg-yellow-100 px-1 rounded">SILICONFLOW_API_KEY=你的API密钥</code></li>
+                <li>重启开发服务器</li>
+              </ol>
+              <p className="text-xs text-yellow-600 mt-2">
+                详细说明请查看项目根目录的 <code className="bg-yellow-100 px-1 rounded">SETUP.md</code> 文件
+              </p>
+            </div>
+          )}
+          
+          <div className="space-x-4">
+            <Button onClick={() => router.push('/tags')} className="bg-orange-500 hover:bg-orange-600">
+              重新选择标签
+            </Button>
+            {isConfigError && (
+              <Button onClick={() => window.location.reload()} className="bg-blue-500 hover:bg-blue-600">
+                刷新页面
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     )

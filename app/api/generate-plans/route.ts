@@ -21,11 +21,6 @@ interface AIRequest {
   tags: string[]
 }
 
-// 定义AI响应的数据结构
-interface AIResponse {
-  plans: Plan[]
-}
-
 export async function POST(request: NextRequest) {
   try {
     // 获取请求体中的标签
@@ -38,27 +33,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 第一步：调用小红书搜索API获取相关信息
-    let xiaohongshuInfo = ''
-    try {
-      const searchResponse = await fetch(`${request.nextUrl.origin}/api/coze-search`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ tags }),
-      })
+    // 检查API密钥配置
+    const apiKey = process.env.SILICONFLOW_API_KEY
+    const apiUrl = process.env.SILICONFLOW_API_URL || 'https://api.siliconflow.com/v1'
 
-      if (searchResponse.ok) {
-        const searchData = await searchResponse.json()
-        if (searchData.success && searchData.data.searchResults) {
-          xiaohongshuInfo = searchData.data.searchResults
-          console.log('小红书搜索成功，获取到相关信息')
-        }
-      }
-    } catch (searchError) {
-      console.error('小红书搜索失败，继续使用AI生成:', searchError)
-      // 搜索失败不影响后续流程
+    if (!apiKey || apiKey === 'your_api_key_here') {
+      console.error('API密钥未配置或使用默认值')
+      return NextResponse.json(
+        { 
+          error: 'API密钥未配置',
+          message: '请在 .env.local 文件中配置 SILICONFLOW_API_KEY 环境变量',
+          status: 'CONFIGURATION_REQUIRED'
+        },
+        { status: 500 }
+      )
     }
 
     // 构建AI提示词
@@ -79,7 +67,7 @@ export async function POST(request: NextRequest) {
 - 消费水平要适中，适合年轻人
 - 每个方案都要有独特的亮点
 
-请以JSON格式返回，格式如下：
+请严格按照以下JSON格式返回：
 {
   "plans": [
     {
@@ -99,22 +87,9 @@ export async function POST(request: NextRequest) {
 
     const userPrompt = `用户选择的标签：${tags.join('、')}
 
-${xiaohongshuInfo ? `小红书相关推荐信息：
-${xiaohongshuInfo}
-
-请基于以上小红书用户的真实分享和推荐，结合用户选择的标签，生成2个完全不同的成都聚会方案。确保推荐的地点、消费信息、体验感受等都基于真实用户反馈。` : '请根据这些标签，生成2个完全不同的成都聚会方案。'}`
+请根据这些标签，生成2个完全不同的成都聚会方案。确保推荐的地点、消费信息、体验感受等都符合成都实际情况，并严格按照系统提示中的JSON格式返回。`
 
     // 调用硅基流动API生成方案
-    const apiKey = process.env.SILICONFLOW_API_KEY
-    const apiUrl = process.env.SILICONFLOW_API_URL || 'https://api.siliconflow.com/v1'
-
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: 'API密钥未配置' },
-        { status: 500 }
-      )
-    }
-
     const response = await fetch(`${apiUrl}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -136,15 +111,33 @@ ${xiaohongshuInfo}
         max_tokens: 2000,
         temperature: 0.8,
         top_p: 0.9,
-        stream: false
+        stream: false,
+        response_format: {
+          type: "json_object"
+        }
       })
     })
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('API调用失败:', errorText)
+      console.error('API调用失败:', response.status, errorText)
+      
+      // 尝试解析错误信息
+      let errorMessage = 'AI服务调用失败'
+      try {
+        const errorData = JSON.parse(errorText)
+        errorMessage = errorData.error || errorData.message || errorMessage
+      } catch (e) {
+        // 如果无法解析JSON，使用原始错误文本
+        errorMessage = errorText || errorMessage
+      }
+      
       return NextResponse.json(
-        { error: 'AI服务调用失败' },
+        { 
+          error: errorMessage,
+          status: response.status,
+          details: '请检查API密钥是否正确，或稍后重试'
+        },
         { status: 500 }
       )
     }
@@ -153,107 +146,59 @@ ${xiaohongshuInfo}
     const aiContent = data.choices[0]?.message?.content
 
     if (!aiContent) {
+      console.error('AI响应内容为空')
       return NextResponse.json(
         { error: 'AI响应格式错误' },
         { status: 500 }
       )
     }
 
+    // 记录AI返回的原始内容用于调试
+    console.log('AI返回的原始内容:', aiContent)
+
     // 解析AI返回的JSON内容
     let plans: Plan[]
     try {
-      // 尝试直接解析
+      // 由于使用了response_format，AI应该返回标准JSON
       const parsed = JSON.parse(aiContent)
       plans = parsed.plans || []
-    } catch (parseError) {
-      // 如果解析失败，尝试提取JSON部分
-      const jsonMatch = aiContent.match(/\{[\s\S]*\}/)
-      if (jsonMatch) {
-        try {
-          const parsed = JSON.parse(jsonMatch[0])
-          plans = parsed.plans || []
-        } catch (secondError) {
-          console.error('JSON解析失败:', secondError)
-          return NextResponse.json(
-            { error: 'AI响应解析失败' },
-            { status: 500 }
-          )
-        }
-      } else {
+      
+      if (!Array.isArray(plans) || plans.length === 0) {
+        console.error('AI返回的plans格式不正确:', parsed)
         return NextResponse.json(
-          { error: 'AI响应中未找到有效JSON' },
+          { error: 'AI返回的方案格式不正确' },
           { status: 500 }
         )
       }
+      
+      console.log('成功解析AI返回的方案:', plans.length, '个')
+    } catch (parseError) {
+      console.error('JSON解析失败:', parseError)
+      console.error('AI返回的原始内容:', aiContent)
+      return NextResponse.json(
+        { 
+          error: 'AI响应解析失败',
+          details: 'AI返回的内容不是有效的JSON格式',
+          rawContent: aiContent.substring(0, 500) // 记录前500个字符用于调试
+        },
+        { status: 500 }
+      )
     }
 
-    // 为每个方案生成对应的AI图片
-    const validatedPlans = await Promise.all(plans.map(async (plan, index) => {
-      try {
-        // 生成图片提示词
-        const imagePrompt = generateImagePrompt(plan, tags)
-        
-        // 调用AI图片生成API
-        const imageResponse = await fetch(`${apiUrl}/images/generations`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'Kwai-Kolors/Kolors',
-            prompt: imagePrompt,
-            image_size: '1024x1024',
-            batch_size: 1,
-            num_inference_steps: 20,
-            guidance_scale: 7.5,
-            negative_prompt: '模糊, 低质量, 扭曲, 不完整'
-          })
-        })
-
-        let imageUrl = plan.image || getDefaultImage(tags)
-        
-        if (imageResponse.ok) {
-          const imageData = await imageResponse.json()
-          if (imageData.images && imageData.images.length > 0) {
-            // 注意：硅基流动的图片URL有效期只有1小时
-            // 这里我们返回图片数据，前端需要及时处理
-            imageUrl = imageData.images[0].url || plan.image || getDefaultImage(tags)
-          }
-        }
-
-        return {
-          id: index + 1,
-          title: plan.title || `成都聚会方案${index + 1}`,
-          image: imageUrl,
-          tags: plan.tags || ['#成都', '#聚会'],
-          description: plan.description || '这是一个精心设计的成都聚会方案',
-          duration: plan.duration || '3-4小时',
-          budget: plan.budget || '¥150-200',
-          transport: plan.transport || '便捷',
-          timeline: plan.timeline || [
-            { time: '19:00-20:30', activity: '享受晚餐时光' },
-            { time: '20:30-22:00', activity: '体验特色活动' }
-          ]
-        }
-      } catch (error) {
-        console.error(`生成方案${index + 1}的图片时出错:`, error)
-        // 如果图片生成失败，使用默认图片
-        return {
-          id: index + 1,
-          title: plan.title || `成都聚会方案${index + 1}`,
-          image: getDefaultImage(tags),
-          tags: plan.tags || ['#成都', '#聚会'],
-          description: plan.description || '这是一个精心设计的成都聚会方案',
-          duration: plan.duration || '3-4小时',
-          budget: plan.budget || '¥150-200',
-          transport: plan.transport || '便捷',
-          timeline: plan.timeline || [
-            { time: '19:00-20:30', activity: '享受晚餐时光' },
-            { time: '20:30-22:00', activity: '体验特色活动' }
-          ]
-        }
-      }
+    // 验证和清理方案数据
+    const validatedPlans = plans.map((plan, index) => ({
+      id: index + 1,
+      title: plan.title || `成都聚会方案${index + 1}`,
+      image: getDefaultImage(tags),
+      tags: plan.tags || ['#成都', '#聚会'],
+      description: plan.description || '这是一个精心设计的成都聚会方案',
+      duration: plan.duration || '3-4小时',
+      budget: plan.budget || '¥150-200',
+      transport: plan.transport || '便捷',
+      timeline: plan.timeline || [
+        { time: '19:00-20:30', activity: '享受晚餐时光' },
+        { time: '20:30-22:00', activity: '体验特色活动' }
+      ]
     }))
 
     return NextResponse.json({ plans: validatedPlans })
@@ -265,34 +210,6 @@ ${xiaohongshuInfo}
       { status: 500 }
     )
   }
-}
-
-// 生成图片提示词
-function generateImagePrompt(plan: any, tags: string[]): string {
-  // 根据方案内容和标签生成合适的图片提示词
-  const basePrompt = '成都, 高质量, 现代摄影风格, 4K分辨率, 非人像, 背景图, 无文字'
-  
-  // 根据标签添加特定描述
-  let tagDescription = ''
-  if (tags.includes('美食')) tagDescription += ', 美食场景, 餐厅环境'
-  if (tags.includes('艺术')) tagDescription += ', 艺术氛围, 画廊空间'
-  if (tags.includes('夜生活')) tagDescription += ', 夜晚场景, 酒吧环境'
-  if (tags.includes('文化')) tagDescription += ', 传统文化, 茶馆环境'
-  if (tags.includes('现代')) tagDescription += ', 现代建筑, 都市风格'
-  if (tags.includes('复古')) tagDescription += ', 复古风格, 怀旧氛围'
-  if (tags.includes('浪漫')) tagDescription += ', 浪漫氛围, 温馨环境'
-  if (tags.includes('文艺')) tagDescription += ', 文艺气息, 创意空间'
-  
-  // 根据方案标题添加描述
-  let titleDescription = ''
-  if (plan.title) {
-    if (plan.title.includes('玉林路')) titleDescription += ', 玉林路街道, 成都特色街区'
-    if (plan.title.includes('太古里')) titleDescription += ', 太古里商圈, 现代商业区'
-    if (plan.title.includes('宽窄巷子')) titleDescription += ', 宽窄巷子, 传统街区'
-    if (plan.title.includes('慢生活')) titleDescription += ', 悠闲生活, 慢节奏'
-  }
-  
-  return `${basePrompt}${tagDescription}${titleDescription}, 聚会场景, 年轻人, 时尚, 精美构图`
 }
 
 // 根据标签选择合适的默认图片
