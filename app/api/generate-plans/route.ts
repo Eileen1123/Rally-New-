@@ -189,7 +189,7 @@ export async function POST(request: NextRequest) {
     const validatedPlans = plans.map((plan, index) => ({
       id: index + 1,
       title: plan.title || `成都聚会方案${index + 1}`,
-      image: getDefaultImage(tags),
+      image: getImageForPlan(plan, tags),
       tags: plan.tags || ['#成都', '#聚会'],
       description: plan.description || '这是一个精心设计的成都聚会方案',
       duration: plan.duration || '3-4小时',
@@ -229,6 +229,91 @@ function getDefaultImage(tags: string[]): string {
     }
   }
 
+  // 默认返回一个通用图片
+  return '/placeholder.jpg'
+}
+
+// 根据方案内容和标签智能选择图片
+function getImageForPlan(plan: any, globalTags: string[]): string {
+  // 优先使用方案自身的标签
+  const planTags = plan.tags || []
+  const allTags = [...planTags, ...globalTags]
+  
+  // 根据方案标题和描述进行关键词匹配
+  const title = (plan.title || '').toLowerCase()
+  const description = (plan.description || '').toLowerCase()
+  
+  // 定义关键词到图片的映射
+  const keywordImages: { [key: string]: string } = {
+    // 地点关键词
+    '玉林路': '/chengdu-yulin-bar.png',
+    '玉林': '/chengdu-yulin-bar.png',
+    '太古里': '/chengdu-taikoo-li-art.png',
+    '太古': '/chengdu-taikoo-li-art.png',
+    '宽窄巷子': '/chengdu-teahouse.png',
+    '宽窄': '/chengdu-teahouse.png',
+    '锦里': '/chengdu-teahouse.png',
+    '春熙路': '/chengdu-taikoo-li-art-gallery.png',
+    '春熙': '/chengdu-taikoo-li-art-gallery.png',
+    
+    // 活动关键词
+    '酒吧': '/chengdu-yulin-bar.png',
+    '酒馆': '/chengdu-yulin-bar.png',
+    '夜生活': '/chengdu-yulin-bar.png',
+    '微醺': '/chengdu-yulin-bar.png',
+    '复古': '/chengdu-yulin-road-vintage-bar.png',
+    '慢生活': '/chengdu-yulin-bar.png',
+    '咖啡': '/chengdu-street-cafe.png',
+    '茶馆': '/chengdu-teahouse.png',
+    '茶文化': '/chengdu-teahouse.png',
+    '艺术': '/chengdu-taikoo-li-art.png',
+    '画廊': '/chengdu-taikoo-li-art-gallery.png',
+    '展览': '/chengdu-taikoo-li-art-gallery.png',
+    '美食': '/chengdu-street-cafe.png',
+    '餐厅': '/chengdu-street-cafe.png',
+    '小吃': '/chengdu-street-cafe.png',
+    '现代': '/chengdu-taikoo-li-art-gallery.png',
+    '都市': '/chengdu-taikoo-li-art-gallery.png',
+    '文艺': '/chengdu-taikoo-li-art.png',
+    '创意': '/chengdu-taikoo-li-art.png'
+  }
+  
+  // 根据标题和描述匹配关键词
+  for (const [keyword, image] of Object.entries(keywordImages)) {
+    if (title.includes(keyword) || description.includes(keyword)) {
+      return image
+    }
+  }
+  
+  // 根据标签匹配
+  for (const tag of allTags) {
+    const cleanTag = tag.replace('#', '').toLowerCase()
+    if (keywordImages[cleanTag]) {
+      return keywordImages[cleanTag]
+    }
+  }
+  
+  // 如果没有匹配到特定关键词，根据标签类型选择
+  const tagImages: { [key: string]: string } = {
+    '美食': '/chengdu-street-cafe.png',
+    '艺术': '/chengdu-taikoo-li-art.png',
+    '夜生活': '/chengdu-yulin-bar.png',
+    '文化': '/chengdu-teahouse.png',
+    '现代': '/chengdu-taikoo-li-art-gallery.png',
+    '复古': '/chengdu-yulin-road-vintage-bar.png',
+    '文艺': '/chengdu-taikoo-li-art.png',
+    '浪漫': '/chengdu-yulin-bar.png',
+    '悠闲': '/chengdu-teahouse.png',
+    '时尚': '/chengdu-taikoo-li-art-gallery.png'
+  }
+  
+  for (const tag of allTags) {
+    const cleanTag = tag.replace('#', '')
+    if (tagImages[cleanTag]) {
+      return tagImages[cleanTag]
+    }
+  }
+  
   // 默认返回一个通用图片
   return '/placeholder.jpg'
 }
