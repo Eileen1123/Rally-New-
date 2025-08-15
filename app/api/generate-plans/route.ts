@@ -231,4 +231,4 @@ function getDefaultImage(tags: string[]): string {
 
   // 默认返回一个通用图片
   return '/placeholder.jpg'
-} 
+}
