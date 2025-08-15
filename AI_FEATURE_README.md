@@ -9,7 +9,7 @@
 ### 1. 环境配置
 在项目根目录创建 `.env.local` 文件，添加以下内容：
 
-```bash
+\`\`\`bash
 # 硅基流动 API 配置
 SILICONFLOW_API_KEY=你的硅基流动API密钥
 SILICONFLOW_API_URL=https://api.siliconflow.com/v1
@@ -17,7 +17,7 @@ SILICONFLOW_API_URL=https://api.siliconflow.com/v1
 # Coze 小红书搜索 API 配置
 COZE_API_KEY=你的Coze API密钥
 COZE_BOT_ID=你的bot_id
-```
+\`\`\`
 
 ### 2. 获取API密钥
 1. **硅基流动API密钥**：
@@ -96,4 +96,4 @@ A: 不会，小红书搜索失败时系统会自动跳过，继续使用AI生成
 1. 环境变量配置是否正确
 2. API密钥是否有效
 3. 网络连接是否正常
-4. 控制台是否有错误信息 
+4. 控制台是否有错误信息
