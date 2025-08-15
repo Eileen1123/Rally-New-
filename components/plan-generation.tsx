@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { Button } from "@/components/ui/button"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Heart, Share2, RefreshCw, Clock, DollarSign, MapPin } from "lucide-react"
 
-export default function PlanGeneration() {
+function PlanGenerationContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(true)
@@ -236,5 +236,20 @@ export default function PlanGeneration() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function PlanGeneration() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen py-8 px-4 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-lg text-gray-600">正在加载搜索参数...</p>
+        </div>
+      </div>
+    }>
+      <PlanGenerationContent />
+    </Suspense>
   )
 }

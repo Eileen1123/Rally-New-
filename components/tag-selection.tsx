@@ -1,11 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { Sparkles, ArrowLeft } from "lucide-react"
 
-export default function TagSelection() {
+function TagSelectionContent() {
   const router = useRouter()
   const [selectedTags, setSelectedTags] = useState<string[]>([])
 
@@ -163,5 +163,20 @@ export default function TagSelection() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function TagSelection() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen py-8 px-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-lg text-gray-600">正在加载页面...</p>
+        </div>
+      </div>
+    }>
+      <TagSelectionContent />
+    </Suspense>
   )
 }
