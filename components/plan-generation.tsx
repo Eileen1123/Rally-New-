@@ -2,35 +2,71 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Heart, Share2, RefreshCw, Clock, DollarSign, MapPin } from "lucide-react"
 
 export default function PlanGeneration() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(true)
   const [loadingText, setLoadingText] = useState("正在唤醒成都的文艺基因...")
+  const [plans, setPlans] = useState<any[]>([])
+  const [error, setError] = useState<string | null>(null)
 
   const loadingTexts = ["正在唤醒成都的文艺基因...", "为你匹配最搭的 BGM...", "寻找隐藏的宝藏地点...", "灵感即将抵达！"]
 
   useEffect(() => {
-    let textIndex = 0
-    const textInterval = setInterval(() => {
-      textIndex = (textIndex + 1) % loadingTexts.length
-      setLoadingText(loadingTexts[textIndex])
-    }, 1500)
+    const fetchPlans = async () => {
+      try {
+        const tagsParam = searchParams.get('tags')
+        
+        if (tagsParam) {
+          // 如果有标签参数，调用AI生成方案
+          const tags = JSON.parse(decodeURIComponent(tagsParam))
+          
+          // 显示AI生成中的加载状态
+          let textIndex = 0
+          const textInterval = setInterval(() => {
+            textIndex = (textIndex + 1) % loadingTexts.length
+            setLoadingText(loadingTexts[textIndex])
+          }, 1500)
 
-    const loadingTimeout = setTimeout(() => {
-      setIsLoading(false)
-      clearInterval(textInterval)
-    }, 6000)
+          // 调用API生成方案
+          const response = await fetch('/api/generate-plans', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ tags }),
+          })
 
-    return () => {
-      clearInterval(textInterval)
-      clearTimeout(loadingTimeout)
+          clearInterval(textInterval)
+
+          if (!response.ok) {
+            throw new Error('生成方案失败')
+          }
+
+          const data = await response.json()
+          setPlans(data.plans)
+          setIsLoading(false)
+        } else {
+          // 如果没有标签参数，使用默认方案
+          setPlans(defaultPlans)
+          setIsLoading(false)
+        }
+      } catch (error) {
+        console.error('获取方案时出错:', error)
+        setError('获取方案失败，请重试')
+        setIsLoading(false)
+      }
     }
-  }, [])
 
-  const plans = [
+    fetchPlans()
+  }, [searchParams])
+
+  // 默认方案数据
+  const defaultPlans = [
+
     {
       id: 1,
       title: "在玉林路的尽头，寻找成都的慢生活",
@@ -74,20 +110,48 @@ export default function PlanGeneration() {
     )
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen py-8 px-4 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">出错了</h1>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <Button onClick={() => router.push('/tags')} className="bg-orange-500 hover:bg-orange-600">
+            重新选择标签
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen py-8 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">为你量身定制</h1>
-          <p className="text-gray-600">基于你的喜好，我们为你准备了两个精彩方案</p>
+          <p className="text-gray-600">
+            {searchParams.get('tags') 
+              ? '基于你选择的标签，AI为你生成了专属方案' 
+              : '基于你的喜好，我们为你准备了两个精彩方案'
+            }
+          </p>
         </div>
 
         {/* Plan Cards */}
         <div className="space-y-8">
           {plans.map((plan, index) => (
             <div key={plan.id} className="bg-white rounded-xl shadow-lg overflow-hidden">
-              <img src={plan.image || "/placeholder.svg"} alt={plan.title} className="w-full h-64 object-cover" />
+                              <img 
+                  src={plan.image || "/placeholder.svg"} 
+                  alt={plan.title} 
+                  className="w-full h-64 object-cover"
+                  onError={(e) => {
+                    // 如果AI生成的图片加载失败，使用默认图片
+                    const target = e.target as HTMLImageElement
+                    target.src = "/placeholder.jpg"
+                  }}
+                />
 
               <div className="p-6">
                 <h2 className="text-2xl font-bold text-gray-900 mb-3 leading-tight">{plan.title}</h2>
@@ -167,7 +231,7 @@ export default function PlanGeneration() {
             className="border-2 border-dashed border-gray-300 text-gray-600 hover:bg-gray-50"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
-            换一批方案
+            {searchParams.get('tags') ? '重新选择标签' : '换一批方案'}
           </Button>
         </div>
       </div>

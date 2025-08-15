@@ -11,19 +11,19 @@ export default function TagSelection() {
 
   const tagCategories = [
     {
-      title: "做什么 (核心基因)",
+      title: "做什么...",
       color: "blue",
       tags: ["美食", "观影", "艺术", "音乐", "购物", "运动", "文化", "夜生活"],
     },
     {
-      title: "什么氛围 (情境基因)",
+      title: "氛围是...",
       color: "orange",
       tags: ["浪漫", "文艺", "复古", "现代", "私密", "热闹", "悠闲", "刺激"],
     },
     {
-      title: "现实约束 (约束基因)",
+      title: "我想要...",
       color: "green",
-      tags: ["预算有限", "时间充裕", "交通便利", "室内活动", "户外活动", "人少安静", "网红打卡", "本地特色"],
+      tags: ["性价比高", "充裕的时间", "交通便利", "室内活动", "户外活动", "人少安静", "网红打卡", "本地特色"],
     },
   ]
 
@@ -50,11 +50,40 @@ export default function TagSelection() {
     }
   }
 
+  const [isGenerating, setIsGenerating] = useState(false)
+
   const handleSurpriseMe = () => {
     // Randomly select some tags
     const allTags = tagCategories.flatMap((cat) => cat.tags)
     const randomTags = allTags.sort(() => 0.5 - Math.random()).slice(0, 5)
     setSelectedTags(randomTags)
+  }
+
+  const handleGeneratePlans = async () => {
+    if (selectedTags.length === 0) return
+
+    setIsGenerating(true)
+    try {
+      const response = await fetch('/api/generate-plans', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ tags: selectedTags }),
+      })
+
+      if (!response.ok) {
+        throw new Error('生成方案失败')
+      }
+
+      // 跳转到生成页面，并传递标签信息
+      router.push(`/generate?tags=${encodeURIComponent(JSON.stringify(selectedTags))}`)
+    } catch (error) {
+      console.error('生成方案时出错:', error)
+      alert('生成方案失败，请重试')
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
   return (
@@ -66,7 +95,7 @@ export default function TagSelection() {
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">选择你的心情标签</h1>
+            <h1 className="text-2xl font-bold text-gray-900">选择你的探索标签</h1>
             <p className="text-gray-600 mt-1">告诉我们你想要什么样的体验</p>
           </div>
         </div>
@@ -117,13 +146,20 @@ export default function TagSelection() {
       {/* Fixed Bottom Action */}
       <div className="fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-sm p-4 shadow-[0_-2px_10px_rgba(0,0,0,0.1)] border-t border-gray-200">
         <div className="max-w-4xl mx-auto">
-          <Button
-            onClick={() => router.push("/generate")}
-            disabled={selectedTags.length === 0}
-            className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 text-white font-bold py-4 rounded-xl text-lg transition-all duration-300"
-          >
-            生成我的专属方案 {selectedTags.length > 0 && `(${selectedTags.length})`}
-          </Button>
+                  <Button
+          onClick={handleGeneratePlans}
+          disabled={selectedTags.length === 0 || isGenerating}
+          className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 text-white font-bold py-4 rounded-xl text-lg transition-all duration-300"
+        >
+          {isGenerating ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+              AI正在生成方案...
+            </>
+          ) : (
+            `生成我的专属方案 ${selectedTags.length > 0 ? `(${selectedTags.length})` : ''}`
+          )}
+        </Button>
         </div>
       </div>
     </div>
