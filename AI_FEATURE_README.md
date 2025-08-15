@@ -10,14 +10,25 @@
 在项目根目录创建 `.env.local` 文件，添加以下内容：
 
 ```bash
+# 硅基流动 API 配置
 SILICONFLOW_API_KEY=你的硅基流动API密钥
 SILICONFLOW_API_URL=https://api.siliconflow.com/v1
+
+# Coze 小红书搜索 API 配置
+COZE_API_KEY=你的Coze API密钥
+COZE_BOT_ID=你的bot_id
 ```
 
 ### 2. 获取API密钥
-1. 访问硅基流动官网
-2. 注册账号并获取API密钥
-3. 将密钥填入 `.env.local` 文件
+1. **硅基流动API密钥**：
+   - 访问硅基流动官网
+   - 注册账号并获取API密钥
+   - 将密钥填入 `.env.local` 文件
+
+2. **Coze小红书搜索API配置**：
+   - 访问Coze官网创建机器人
+   - 获取API密钥和bot_id
+   - 将配置填入 `.env.local` 文件
 
 ## 📱 使用方法
 
@@ -27,7 +38,8 @@ SILICONFLOW_API_URL=https://api.siliconflow.com/v1
 - 点击"生成我的专属方案"按钮
 
 ### 2. AI生成方案
-- 系统会调用AI生成2个不同的聚会方案
+- 系统先调用小红书搜索API获取相关推荐信息
+- 然后调用AI生成2个不同的聚会方案
 - 生成过程中显示加载动画和提示文字
 - 生成完成后自动跳转到方案展示页面
 
@@ -58,7 +70,8 @@ SILICONFLOW_API_URL=https://api.siliconflow.com/v1
 - **前端**：React + Next.js + TypeScript
 - **后端**：Next.js API Routes
 - **AI服务**：硅基流动 DeepSeek V3（文本生成）+ Kwai-Kolors（图片生成）
-- **数据流**：标签选择 → API调用 → AI生成方案和图片 → 返回完整方案
+- **数据搜索**：Coze小红书搜索API
+- **数据流**：标签选择 → 小红书搜索 → 信息整合 → AI生成方案和图片 → 返回完整方案
 
 ## 🐛 常见问题
 
@@ -73,6 +86,9 @@ A: AI会根据成都实际情况生成方案，但建议用户自行验证具体
 
 ### Q: AI生成的图片会过期吗？
 A: 硅基流动的图片URL有效期为1小时，系统会自动处理过期图片，使用默认图片替代。
+
+### Q: 小红书搜索失败会影响方案生成吗？
+A: 不会，小红书搜索失败时系统会自动跳过，继续使用AI生成方案，确保功能正常运行。
 
 ## 📞 技术支持
 

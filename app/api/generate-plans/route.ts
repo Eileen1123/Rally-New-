@@ -38,6 +38,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // 第一步：调用小红书搜索API获取相关信息
+    let xiaohongshuInfo = ''
+    try {
+      const searchResponse = await fetch(`${request.nextUrl.origin}/api/coze-search`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ tags }),
+      })
+
+      if (searchResponse.ok) {
+        const searchData = await searchResponse.json()
+        if (searchData.success && searchData.data.searchResults) {
+          xiaohongshuInfo = searchData.data.searchResults
+          console.log('小红书搜索成功，获取到相关信息')
+        }
+      }
+    } catch (searchError) {
+      console.error('小红书搜索失败，继续使用AI生成:', searchError)
+      // 搜索失败不影响后续流程
+    }
+
     // 构建AI提示词
     const systemPrompt = `你是一位专业的成都聚会规划师，专门为18-30岁的年轻用户设计聚会方案。
 
@@ -76,7 +99,10 @@ export async function POST(request: NextRequest) {
 
     const userPrompt = `用户选择的标签：${tags.join('、')}
 
-请根据这些标签，生成2个完全不同的成都聚会方案。`
+${xiaohongshuInfo ? `小红书相关推荐信息：
+${xiaohongshuInfo}
+
+请基于以上小红书用户的真实分享和推荐，结合用户选择的标签，生成2个完全不同的成都聚会方案。确保推荐的地点、消费信息、体验感受等都基于真实用户反馈。` : '请根据这些标签，生成2个完全不同的成都聚会方案。'}`
 
     // 调用硅基流动API生成方案
     const apiKey = process.env.SILICONFLOW_API_KEY
