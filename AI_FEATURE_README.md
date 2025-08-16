@@ -14,7 +14,7 @@
 SILICONFLOW_API_KEY=你的硅基流动API密钥
 SILICONFLOW_API_URL=https://api.siliconflow.com/v1
 <<<<<<< HEAD
-```
+\`\`\`
 =======
 
 # Coze 小红书搜索 API 配置

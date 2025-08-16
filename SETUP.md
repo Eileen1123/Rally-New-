@@ -8,21 +8,21 @@
 ### 1. 创建环境变量文件
 在项目根目录创建 `.env.local` 文件：
 
-```bash
+\`\`\`bash
 # Windows PowerShell
 New-Item -Path ".env.local" -ItemType File
 
 # 或者手动创建文件
-```
+\`\`\`
 
 ### 2. 配置必要的环境变量
 在 `.env.local` 文件中添加以下内容：
 
-```env
+\`\`\`env
 # 硅基流动 API 配置
 SILICONFLOW_API_KEY=你的实际API密钥
 SILICONFLOW_API_URL=https://api.siliconflow.com/v1
-```
+\`\`\`
 
 ### 3. 获取API密钥
 - 访问 [硅基流动官网](https://www.siliconflow.com/) 注册账号
@@ -32,11 +32,11 @@ SILICONFLOW_API_URL=https://api.siliconflow.com/v1
 ### 4. 重启开发服务器
 配置完成后，重启开发服务器：
 
-```bash
+\`\`\`bash
 npm run dev
 # 或
 pnpm dev
-```
+\`\`\`
 
 ## 注意事项
 - `.env.local` 文件不会被提交到Git仓库（已在.gitignore中配置）
@@ -54,4 +54,4 @@ pnpm dev
 ## 功能说明
 - 用户选择标签后，系统会直接调用硅基流动AI API生成聚会方案
 - 生成的方案包含标题、描述、时间安排、消费预算等详细信息
-- 系统会根据每个方案的内容和标签智能选择合适的图片，确保每个卡片都有独特的配图 
+- 系统会根据每个方案的内容和标签智能选择合适的图片，确保每个卡片都有独特的配图
